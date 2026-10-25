@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 · 智慧图书馆管理系统</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app" class="auth-page">
+    <section class="auth-brand">
+        <div class="brand-logo">
+            <span class="logo-mark">📚</span>
+            <span>LibraryWeb2026</span>
+        </div>
+        <h1 class="brand-title">智慧图书馆<br>管理系统</h1>
+        <p class="brand-desc">基于 Servlet + JDBC 构建的一体化图书馆管理平台，覆盖用户、图书、借阅、推荐与统计分析全流程。</p>
+        <div class="brand-points">
+            <div><span class="dot">✓</span> 用户注册 / 登录 / 信息查询</div>
+            <div><span class="dot">✓</span> 图书新增 / 编辑 / 废弃 / 副本管理</div>
+            <div><span class="dot">✓</span> 借书 / 还书 / 借阅记录与数据统计</div>
+            <div><span class="dot">✓</span> 图书推荐与管理员审阅</div>
+        </div>
+    </section>
+
+    <section class="auth-form-side">
+        <div class="auth-card">
+            <h2>欢迎回来</h2>
+            <p class="subtitle">请输入用户名、密码和验证码登录系统</p>
+
+            <div v-if="error" class="alert alert-error">{{ error }}</div>
+
+            <form id="loginForm" @submit.prevent="submit">
+                <div class="field">
+                    <label>用户名</label>
+                    <div class="control">
+                        <input class="input" type="text" v-model.trim="form.name" placeholder="请输入姓名 / 用户名" autocomplete="username">
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label>密码</label>
+                    <div class="control">
+                        <input class="input" :type="showPassword ? 'text' : 'password'" v-model="form.password"
+                               placeholder="请输入密码" autocomplete="current-password">
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label>验证码</label>
+                    <div class="captcha-row">
+                        <input class="input" type="text" v-model.trim="form.captcha" maxlength="6"
+                               placeholder="请输入验证码" autocomplete="off">
+                        <img id="captchaImg" class="captcha-img" :src="captchaUrl" alt="验证码" title="点击刷新"
+                             @click="refreshCaptcha">
+                    </div>
+                </div>
+
+                <div class="auth-actions">
+                    <button type="submit" class="btn btn-block" :disabled="loading">
+                        {{ loading ? '登录中...' : '登录' }}
+                    </button>
+                    <button type="button" class="btn btn-ghost" @click="reset" :disabled="loading">重置</button>
+                </div>
+            </form>
+
+            <div class="auth-footer">
+                还没有账号？<a href="register.html">立即注册</a>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script src="lib/jquery.min.js"></script>
+<script src="js/common.js"></script>
+<script src="lib/axios.min.js"></script>
+<script src="js/api.js"></script>
+<script src="lib/vue.global.prod.js"></script>
+<script>
+    const { createApp } = Vue;
+    createApp({
+        data() {
+            return {
+                form: { name: '', password: '', captcha: '' },
+                captchaUrl: 'api/captcha?t=' + Date.now(),
+                error: '',
+                loading: false,
+                showPassword: false
+            };
+        },
+        methods: {
+            refreshCaptcha() {
+                this.captchaUrl = 'api/captcha?t=' + Date.now();
+            },
+            reset() {
+                this.form = { name: '', password: '', captcha: '' };
+                this.error = '';
+                this.refreshCaptcha();
+            },
+            async submit() {
+                this.error = '';
+                if (!this.form.name) {
+                    this.error = '请输入用户名';
+                    shake('#loginForm');
+                    return;
+                }
+                if (!this.form.password) {
+                    this.error = '请输入密码';
+                    shake('#loginForm');
+                    return;
+                }
+                if (!this.form.captcha) {
+                    this.error = '请输入验证码';
+                    shake('#loginForm');
+                    return;
+                }
+                this.loading = true;
+                try {
+                    const res = await api.post('/login', this.form);
+                    if (res.code === 200) {
+                        showToast('登录成功，正在进入系统...', 'success');
+                        setTimeout(() => { location.href = 'home.html'; }, 300);
+                    } else {
+                        this.error = res.message || '登录失败';
+                        shake('#loginForm');
+                        this.refreshCaptcha();
+                        this.form.captcha = '';
+                    }
+                } catch (e) {
+                    this.error = '登录失败，请稍后重试';
+                } finally {
+                    this.loading = false;
+                }
+            }
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
